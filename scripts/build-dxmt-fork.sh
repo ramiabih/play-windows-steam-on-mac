@@ -23,7 +23,60 @@ LLVM_SRC_DIR="$DXMT_SRC/toolchains/llvm-src"
 LLVM_VERSION_TAG="llvmorg-15.0.7"
 WINE_TARBALL_URL="https://github.com/3Shain/wine/releases/download/v8.16-3shain/wine.tar.gz"
 
+# Prebuilt DXMT fork release. When available, users download this instead of
+# compiling LLVM + DXMT (turns a ~45 min build into a ~10 sec download).
+DXMT_PREBUILT_TAG="${DXMT_PREBUILT_TAG:-dxmt-fork-v1}"
+DXMT_PREBUILT_ASSET="dxmt-fork-macos-arm64.tar.gz"
+DXMT_PREBUILT_URL="${DXMT_PREBUILT_URL:-https://github.com/ramiabih/play-windows-steam-on-mac/releases/download/${DXMT_PREBUILT_TAG}/${DXMT_PREBUILT_ASSET}}"
+
 log_step "DXMT fork (Wine 11 game rendering)"
+
+# Install a DXMT tree (layout: x86_64-unix/, x86_64-windows/, i386-windows/)
+# into the Wine bundle, the prefix, and DXMT_ROOT.
+install_dxmt_tree() {
+    local tree=$1
+    local so="$tree/x86_64-unix/winemetal.so"
+    [[ -f "$so" ]] || die "Bad DXMT tree (no x86_64-unix/winemetal.so): $tree"
+
+    mkdir -p "$WINE_UNIX" "$WINE_WIN64" "$WINE_WIN32"
+    cp "$so" "$WINE_UNIX/winemetal.so"
+
+    local dll
+    for dll in d3d11.dll d3d10core.dll dxgi.dll winemetal.dll; do
+        [[ -f "$tree/x86_64-windows/$dll" ]] && cp "$tree/x86_64-windows/$dll" "$WINE_WIN64/$dll"
+        [[ -f "$tree/i386-windows/$dll" ]] && cp "$tree/i386-windows/$dll" "$WINE_WIN32/$dll"
+    done
+
+    cp "$WINE_WIN64/winemetal.dll" "$PREFIX_SYS32/winemetal.dll"
+    cp "$WINE_WIN32/winemetal.dll" "$PREFIX_SYSWOW64/winemetal.dll"
+
+    mkdir -p "$DXMT_ROOT"
+    rm -rf "$DXMT_ROOT"/{i386-windows,x86_64-windows,x86_64-unix}
+    cp -R "$tree/x86_64-windows" "$DXMT_ROOT/x86_64-windows"
+    cp -R "$tree/i386-windows" "$DXMT_ROOT/i386-windows"
+    mkdir -p "$DXMT_ROOT/x86_64-unix"
+    cp "$so" "$DXMT_ROOT/x86_64-unix/winemetal.so"
+}
+
+# -- Fast path: download a prebuilt fork release (no compile) ------------------
+if [[ "${DXMT_BUILD_FROM_SOURCE:-0}" != "1" ]]; then
+    _pb_tar="${TMPDIR:-/tmp}/${DXMT_PREBUILT_ASSET}"
+    log_info "Checking for prebuilt DXMT ($DXMT_PREBUILT_TAG)"
+    if curl -fL --retry 2 -o "$_pb_tar" "$DXMT_PREBUILT_URL" 2>/dev/null; then
+        _pb_dir="${TMPDIR:-/tmp}/dxmt-prebuilt.$$"
+        rm -rf "$_pb_dir"; mkdir -p "$_pb_dir"
+        if tar -xzf "$_pb_tar" -C "$_pb_dir" 2>/dev/null \
+            && [[ -f "$_pb_dir/x86_64-unix/winemetal.so" ]]; then
+            install_dxmt_tree "$_pb_dir"
+            rm -rf "$_pb_dir" "$_pb_tar"
+            log_ok "Installed prebuilt DXMT fork (no compile needed)"
+            exit 0
+        fi
+        rm -rf "$_pb_dir" "$_pb_tar"
+    fi
+    log_info "No prebuilt available — building from source"
+    log_info "(skip this download check next time with DXMT_BUILD_FROM_SOURCE=1)"
+fi
 
 # DXMT compiles Metal shaders, which needs the `metal` compiler. That ships
 # only with full Xcode (App Store), not the Command Line Tools. Check early so
@@ -161,21 +214,19 @@ if [[ ! -d build32 ]]; then
 fi
 arch -arm64 "$MESON" compile -C build32
 
-install_file() {
-    local src=$1 dst=$2
-    [[ -f "$src" ]] || die "Missing: $src"
-    mkdir -p "$(dirname "$dst")"
-    cp "$src" "$dst"
-}
+# Stage build outputs into a clean tree, then install from it. The same tree
+# layout is what scripts/package-dxmt-release.sh ships as the prebuilt release.
+STAGE_DIR="$DXMT_SRC/staging"
+rm -rf "$STAGE_DIR"
+mkdir -p "$STAGE_DIR/x86_64-unix" "$STAGE_DIR/x86_64-windows" "$STAGE_DIR/i386-windows"
 
-install_file "$DXMT_SRC/build/src/winemetal/unix/winemetal.so" "$WINE_UNIX/winemetal.so"
+cp "$DXMT_SRC/build/src/winemetal/unix/winemetal.so" "$STAGE_DIR/x86_64-unix/winemetal.so"
 
 while IFS= read -r -d '' f; do
     name=$(basename "$f")
     case "$name" in
         d3d11.dll|d3d10core.dll|dxgi.dll|winemetal.dll)
-            install_file "$f" "$WINE_WIN64/$name"
-            ;;
+            cp "$f" "$STAGE_DIR/x86_64-windows/$name" ;;
     esac
 done < <(find "$DXMT_SRC/build" -name "*.dll" -print0)
 
@@ -183,19 +234,12 @@ while IFS= read -r -d '' f; do
     name=$(basename "$f")
     case "$name" in
         d3d11.dll|d3d10core.dll|dxgi.dll|winemetal.dll)
-            install_file "$f" "$WINE_WIN32/$name"
-            ;;
+            cp "$f" "$STAGE_DIR/i386-windows/$name" ;;
     esac
 done < <(find "$DXMT_SRC/build32" -name "*.dll" -print0 2>/dev/null)
 
-cp "$WINE_WIN64/winemetal.dll" "$PREFIX_SYS32/winemetal.dll"
-cp "$WINE_WIN32/winemetal.dll" "$PREFIX_SYSWOW64/winemetal.dll"
-
-mkdir -p "$DXMT_ROOT"
-rm -rf "$DXMT_ROOT"/{i386-windows,x86_64-windows,x86_64-unix}
-cp -R "$WINE_WIN32" "$DXMT_ROOT/i386-windows"
-cp -R "$WINE_WIN64" "$DXMT_ROOT/x86_64-windows"
-mkdir -p "$DXMT_ROOT/x86_64-unix"
-cp "$WINE_UNIX/winemetal.so" "$DXMT_ROOT/x86_64-unix/winemetal.so"
+install_dxmt_tree "$STAGE_DIR"
 
 log_ok "DXMT fork installed (game rendering)"
+log_info "Staged artifacts: $STAGE_DIR"
+log_info "Ship them as a prebuilt release: ./scripts/package-dxmt-release.sh"

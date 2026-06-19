@@ -1,5 +1,6 @@
 # Downloaded / built artifacts
 vendor/
+dist/
 wrapper/steamwebhelper.exe
 
 # macOS / editor cruft

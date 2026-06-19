@@ -23,14 +23,7 @@ Steam has a Mac app, but Valve and game devs have mostly abandoned it. Tons of g
 
 This repo makes it. You run one script, walk away for a bit, come back to a working Steam where you can log in, buy games, and actually play them.
 
-The catch: getting here is a pain in the ass if you do it by hand. Two things break, and they break in confusing ways:
-
-| You want this | Stock Wine gives you this |
-|---------------|--------------------------|
-| The Steam login screen | A black rectangle of nothing |
-| To play a game you bought | A game that opens, thinks about it, and quits in 6 seconds |
-
-This repo fixes both so you don't have to. That's the whole pitch.
+The catch: getting here is a pain in the ass if you do it by hand. T
 
 ---
 
@@ -97,9 +90,17 @@ Then:
 ./install.sh --games
 ```
 
-Same as the basic install, plus it compiles the patched DXMT that makes games render. Fair warning: most of that 45 minutes is your Mac building LLVM from source (it's a compiler the game patch needs). Put on a podcast. It only happens once.
+Same as the basic install, plus the patched DXMT that makes games render.
 
-The plain Steam client doesn't need Xcode. You only need it for `--games`.
+If a **prebuilt DXMT** is available for your setup, the installer downloads it and you're done in seconds (no Xcode, no compile). If there isn't one, it builds from source: most of that ~45 minutes is your Mac building LLVM (a compiler the game patch needs), and that path is what needs Xcode. Put on a podcast. It only happens once.
+
+Force a from-source build:
+
+```bash
+DXMT_BUILD_FROM_SOURCE=1 ./install.sh --games
+```
+
+The plain Steam client doesn't need Xcode. You only need it when building DXMT from source.
 
 ### Launch Steam
 
@@ -262,7 +263,8 @@ macos-wine-steam/
 │   ├── install-steam.sh
 │   ├── install-dxmt.sh
 │   ├── install-wrapper.sh  # the black-screen fix
-│   ├── build-dxmt-fork.sh  # the game-rendering fix (slow, one-time)
+│   ├── build-dxmt-fork.sh  # the game-rendering fix (downloads prebuilt, or compiles)
+│   ├── package-dxmt-release.sh  # maintainers: ship a prebuilt DXMT release
 │   └── configure-game-launch.sh
 └── wrapper/
     └── src/steamwebhelper-wrapper.c
@@ -270,11 +272,18 @@ macos-wine-steam/
 
 ---
 
-## Why does `--games` take forever?
+## Why does `--games` sometimes take forever?
 
-It's compiling, not downloading. The game fix relies on a [patched DXMT](https://github.com/notpop/dxmt), and that needs LLVM 15 built from scratch (it's the shader compiler). No prebuilt exists for this combo yet, so your Mac builds it. ~30-40 minutes, once.
+If there's a prebuilt DXMT release for your setup, it doesn't. You download a small tarball and you're playing in seconds.
 
-Down the road we want to ship prebuilt binaries so nobody has to sit through this. For now, the compile is the reliable path.
+If there isn't one, your Mac compiles it: the game fix relies on a [patched DXMT](https://github.com/notpop/dxmt), which needs LLVM 15 built from scratch (it's the shader compiler) plus full Xcode for the Metal shaders. That's ~30-40 minutes, once.
+
+Maintainers can publish a prebuilt so nobody else has to compile:
+
+```bash
+./install.sh --games            # builds it
+./scripts/package-dxmt-release.sh --publish   # ships it as a GitHub release
+```
 
 ---
 
