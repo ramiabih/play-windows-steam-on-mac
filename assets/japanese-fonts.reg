@@ -1,0 +1,14 @@
+REGEDIT4
+
+[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
+"MS Shell Dlg"="Hiragino Sans GB"
+"MS Shell Dlg 2"="Hiragino Sans GB"
+"MS UI Gothic"="Hiragino Sans GB"
+"MS Gothic"="Hiragino Sans GB"
+"MS PGothic"="Hiragino Sans GB"
+"MS Mincho"="Hiragino Sans GB"
+"MS PMincho"="Hiragino Sans GB"
+"Microsoft Sans Serif"="Hiragino Sans GB"
+"Tahoma"="Hiragino Sans GB"
+"Segoe UI"="Hiragino Sans GB"
+"Segoe UI Emoji"="Hiragino Sans GB"

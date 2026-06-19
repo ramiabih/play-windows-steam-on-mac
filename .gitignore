@@ -1,0 +1,9 @@
+# Downloaded / built artifacts
+vendor/
+wrapper/steamwebhelper.exe
+
+# macOS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp
