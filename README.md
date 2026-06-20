@@ -244,7 +244,7 @@ That clears the prefix and launchers. The Wine and DXMT downloads in `~/wine-*` 
 |----------|---------|--------------|
 | `WINE_VERSION` | `11.8` | Which Gcenx Wine to use |
 | `WINE_ROOT` | `~/wine-$WINE_VERSION` | Where Wine lives |
-| `WINEPREFIX` | `~/.wine-steam` | Your virtual Windows drive |
+| `WINEPREFIX` | `~/.wine-steam-11` | Your virtual Windows drive (tracks the Wine major version) |
 | `DXMT_VERSION` | `0.80` | DXMT release for the UI fallback |
 | `DXMT_ROOT` | `~/DXMT` | Where DXMT files go |
 | `WINE_VIRTUAL_DESKTOP` | `auto` | Force a size like `3440x1440`, or empty to disable |

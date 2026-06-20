@@ -43,7 +43,7 @@ export PATH="$HOMEBREW_PREFIX/bin:$PATH"
 : "${WINE_APP:=$WINE_ROOT/Wine Devel.app}"
 : "${WINE_BIN:=$WINE_APP/Contents/Resources/wine/bin/wine}"
 : "${WINESERVER_BIN:=$WINE_APP/Contents/Resources/wine/bin/wineserver}"
-: "${WINEPREFIX:=$HOME/.wine-steam}"
+: "${WINEPREFIX:=$HOME/.wine-steam-${WINE_VERSION%%.*}}"
 : "${DXMT_VERSION:=0.80}"
 : "${DXMT_ROOT:=$HOME/DXMT}"
 
