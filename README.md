@@ -104,11 +104,16 @@ The plain Steam client doesn't need Xcode. You only need it when building DXMT f
 
 ### Launch Steam
 
+The installer drops a **Steam on Wine** app in your Applications. Open it from
+Launchpad or Spotlight, or drag it to your Dock and click it like any other app.
+
+Prefer the terminal?
+
 ```bash
 ./run.sh
 ```
 
-Or double-click `run.command` in Finder if terminals make you nervous.
+(`run.command` works as a double-click too.)
 
 Watch what it's doing:
 
@@ -286,7 +291,9 @@ macos-wine-steam/
 │   ├── install-wrapper.sh  # the black-screen fix
 │   ├── build-dxmt-fork.sh  # the game-rendering fix (downloads prebuilt, or compiles)
 │   ├── package-dxmt-release.sh  # maintainers: ship a prebuilt DXMT release
+│   ├── install-app.sh      # builds the clickable "Steam on Wine" app
 │   └── configure-game-launch.sh
+├── assets/                 # app icon + Wine registry tweaks
 └── wrapper/
     └── src/steamwebhelper-wrapper.c
 ```

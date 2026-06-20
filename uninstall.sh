@@ -18,6 +18,7 @@ confirm_remove() {
 
 log_step "Uninstall macos-wine-steam"
 
+confirm_remove "/Applications/Steam on Wine.app" "Launcher app"
 confirm_remove "$WINEPREFIX" "Wine prefix"
 confirm_remove "$WINE_ROOT" "Wine install"
 confirm_remove "$DXMT_ROOT" "DXMT"

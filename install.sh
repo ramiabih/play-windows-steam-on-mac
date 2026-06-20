@@ -31,6 +31,7 @@ steps=(
     scripts/fix-ssl.sh
     scripts/install-wrapper.sh
     scripts/configure-game-launch.sh
+    scripts/install-app.sh
 )
 
 if (( INSTALL_GAMES )); then
@@ -45,7 +46,7 @@ done
 log_step "Done"
 log_info ""
 log_info "Launch Steam:"
-log_info "  ./run.sh"
-log_info "  or double-click run.command"
+log_info "  Double-click \"Steam on Wine\" in Launchpad/Spotlight (or drag it to your Dock)"
+log_info "  or run ./run.sh"
 log_info ""
 log_info "Log: \${TMPDIR}/macos-wine-steam.log"
