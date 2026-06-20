@@ -16,17 +16,18 @@ HTMLCACHE="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Steam/htmlcache"
 LOG_FILE="${STEAM_LOG:-${TMPDIR:-/tmp}/macos-wine-steam.log}"
 WRAPPER_BIN="$REPO_ROOT/wrapper/steamwebhelper.exe"
 
+if [[ "${1:-}" == "--stop" ]]; then
+    log_step "Stopping Steam / Wine"
+    stop_wine_steam
+    log_ok "Stopped"
+    exit 0
+fi
+
 log_step "Preparing launch"
 
-patterns='steam\.exe|steamwebhelper|wineserver|wine64-preloader'
-to_kill=$(pgrep -f "$patterns" 2>/dev/null || true)
-if [[ -n "$to_kill" ]]; then
-    # shellcheck disable=SC2086
-    kill -9 $to_kill 2>/dev/null || true
-    sleep 2
-fi
-"$WINESERVER_BIN" -k 2>/dev/null || true
-sleep 1
+# Kill any existing instance (including yesterday's orphans) so launches never
+# pile up and fight over the prefix.
+stop_wine_steam
 
 if [[ -d "$HTMLCACHE" ]]; then
     find "$HTMLCACHE" -maxdepth 2 \( -name "Singleton*" -o -name "*.lock" \) -delete 2>/dev/null || true

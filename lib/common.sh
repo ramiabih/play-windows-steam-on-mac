@@ -96,6 +96,18 @@ wine_run() {
     WINEPREFIX="$WINEPREFIX" WINEDEBUG="$WINEDEBUG" run_x86_64 "$WINE_BIN" "$@"
 }
 
+# Kill every Wine/Steam process from this project, including orphans whose
+# wineserver has already exited (wineserver -k can't reach those, and it hangs
+# when no server is live). We match Wine's window titles case-insensitively.
+# Every pattern carries an ".exe"/explicit suffix so it can never match this
+# repo's own paths, which contain the word "steam" (avoids self-killing).
+stop_wine_steam() {
+    local titles='Steam\.exe|steamwebhelper|explorer\.exe|winedevice\.exe|steamservice\.exe|services\.exe|plugplay\.exe|svchost\.exe|rpcss\.exe|wineboot\.exe|winewrapper|conhost\.exe|start\.exe|PenguinHotel'
+    pkill -9 -fi "$titles" 2>/dev/null || true
+    sleep 1
+    pkill -9 -fi "$titles" 2>/dev/null || true
+}
+
 wine_lib_dir() {
     local arch=$1
     echo "$WINE_APP/Contents/Resources/wine/lib/wine/${arch}"

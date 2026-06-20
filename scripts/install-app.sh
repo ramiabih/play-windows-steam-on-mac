@@ -42,11 +42,66 @@ else
 fi
 
 # -- Launcher executable ------------------------------------------------------
-cat > "$MACOS/launcher" <<EOF
-#!/bin/bash
-cd "$REPO_ROOT" || exit 1
-exec ./run.sh --detach
-EOF
+# IMPORTANT: macOS TCC blocks apps launched from Finder/Dock from executing
+# files inside ~/Documents, ~/Desktop, ~/Downloads ("Operation not permitted").
+# Since this repo usually lives in ~/Documents, the app can't just call run.sh.
+# So we bake a fully self-contained launcher (paths hardcoded at install time)
+# that only touches the Wine install, the prefix, and /tmp — none of which are
+# TCC-protected. It launches Steam in a new session so it survives this app
+# exiting, keeping a single Dock icon.
+STEAM_EXE_REL="drive_c/Program Files (x86)/Steam"
+{
+    echo '#!/bin/bash'
+    echo "WINEPREFIX=$(printf %q "$WINEPREFIX")"
+    echo "WINE_BIN=$(printf %q "$WINE_BIN")"
+    echo "DXMT_ROOT=$(printf %q "$DXMT_ROOT")"
+    echo "STEAM_DIR=$(printf %q "$WINEPREFIX/$STEAM_EXE_REL")"
+    cat <<'BODY'
+LOG="${TMPDIR:-/tmp}/macos-wine-steam.log"
+STEAM_EXE="$STEAM_DIR/steam.exe"
+[ -f "$STEAM_EXE" ] || { osascript -e 'display alert "Steam on Wine" message "Steam is not installed yet. Run ./install.sh in the project folder first."' >/dev/null 2>&1; exit 1; }
+
+# Kill any existing instance (including orphans). Patterns are .exe-suffixed and
+# case-insensitive so they match Wine titles but never this launcher itself.
+titles='Steam\.exe|steamwebhelper|explorer\.exe|winedevice\.exe|steamservice\.exe|services\.exe|plugplay\.exe|svchost\.exe|rpcss\.exe|wineboot\.exe|winewrapper|conhost\.exe|start\.exe|PenguinHotel'
+pkill -9 -fi "$titles" 2>/dev/null
+sleep 1
+pkill -9 -fi "$titles" 2>/dev/null
+
+HTMLCACHE="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Steam/htmlcache"
+[ -d "$HTMLCACHE" ] && find "$HTMLCACHE" -maxdepth 2 \( -name "Singleton*" -o -name "*.lock" \) -delete 2>/dev/null
+
+export WINEPREFIX
+export WINEDEBUG=-all
+export WINEDLLPATH_PREPEND="$DXMT_ROOT"
+export DXMT_LOG_LEVEL=error
+export WINEDLLOVERRIDES="dxgi,d3d11,d3d10core=n,b;bcrypt=b;ncrypt=b;gameoverlayrenderer,gameoverlayrenderer64=d"
+export DXMT_METALFX_SPATIAL_SWAPCHAIN=1
+export DXMT_CONFIG="d3d11.metalSpatialUpscaleFactor = 1.5"
+export MTL_HUD_ENABLED=0
+
+SIZE=$(osascript -e 'tell application "Finder" to get bounds of window of desktop' 2>/dev/null | awk -F', ' '{w=$3+0; h=$4+0; if (w>0 && h>0) print w"x"h}')
+[ -z "$SIZE" ] && SIZE="1920x1080"
+
+cd "$STEAM_DIR" || exit 1
+: > "$LOG"
+
+# Launch in a new session so Steam survives after this app process exits.
+/usr/bin/python3 - "$WINE_BIN" "$SIZE" "$LOG" <<'PY'
+import os, sys, subprocess
+wine, size, log = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(log, "ab") as f:
+    subprocess.Popen(
+        ["arch", "-x86_64", wine, "explorer.exe",
+         "/desktop=macos-wine-steam," + size,
+         r"C:\Program Files (x86)\Steam\Steam.exe",
+         "-no-cef-sandbox", "-cef-single-process", "-noverifyfiles"],
+        stdout=f, stderr=f, stdin=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+PY
+BODY
+} > "$MACOS/launcher"
 chmod +x "$MACOS/launcher"
 
 # -- Info.plist ---------------------------------------------------------------
