@@ -147,6 +147,14 @@ else
 fi
 git -C "$DXMT_SRC" submodule update --init --recursive
 
+# Newer mingw-w64 / libstdc++ headers no longer pull in <iomanip> transitively,
+# so com_guid.cpp fails on std::setw/std::setfill. Inject the include if absent.
+_com_guid="$DXMT_SRC/src/util/com/com_guid.cpp"
+if [[ -f "$_com_guid" ]] && ! grep -q '#include <iomanip>' "$_com_guid"; then
+    log_info "Patching com_guid.cpp (missing <iomanip> include)"
+    sed -i '' 's/#include <mutex>/#include <iomanip>\n#include <mutex>\n#include <sstream>/' "$_com_guid"
+fi
+
 if [[ ! -f "$LLVM_PREFIX/lib/libLLVMCore.a" ]]; then
     log_warn "Building LLVM 15 x86_64 (~30 min, one-time)"
     if [[ ! -d "$LLVM_SRC_DIR" ]]; then
@@ -163,6 +171,8 @@ if [[ ! -f "$LLVM_PREFIX/lib/libLLVMCore.a" ]]; then
         -DLLVM_INCLUDE_TESTS=OFF \
         -DLLVM_INCLUDE_EXAMPLES=OFF \
         -DLLVM_ENABLE_RTTI=ON \
+        -DLLVM_ENABLE_ZSTD=OFF \
+        -DLLVM_ENABLE_ZLIB=OFF \
         -DCMAKE_BUILD_TYPE=Release \
         "-DCMAKE_OSX_ARCHITECTURES=x86_64" \
         "-DCMAKE_INSTALL_PREFIX=$LLVM_PREFIX"
