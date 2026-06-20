@@ -246,6 +246,27 @@ That clears the prefix and launchers. The Wine and DXMT downloads in `~/wine-*` 
 | `STEAM_LOG` | `$TMPDIR/macos-wine-steam.log` | Launch log location |
 | `DXMT_LOG_LEVEL` | `error` | Set to `debug` if a game won't render and you want logs |
 
+### Performance
+
+These are read by `run.sh` when you launch a game.
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `DXMT_METALFX` | `1` | MetalFX spatial upscaling. `0` renders at native res (sharper, slower) |
+| `DXMT_UPSCALE_FACTOR` | `1.5` | How hard MetalFX upscales. `1.0` = native, `2.0` = max FPS, softer image |
+| `DXMT_MAX_FPS` | unset | Cap the frame rate, e.g. `60`. Lowers heat/fan; unset = uncapped |
+| `DXMT_HUD` | `0` | `1` shows a Metal FPS + frame-time overlay so you can measure |
+
+If a game runs slow, bump the upscale factor and turn on the HUD to compare:
+
+```bash
+DXMT_HUD=1 DXMT_UPSCALE_FACTOR=2.0 ./run.sh
+```
+
+MetalFX upscaling is the single biggest lever, especially for Unreal Engine
+games. esync/msync (the usual CPU-side Wine speedup) isn't available in this
+Gcenx build, so the GPU path is where the wins are.
+
 ---
 
 ## What's in the box

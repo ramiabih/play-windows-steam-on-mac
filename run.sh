@@ -55,6 +55,23 @@ export WINEDLLPATH_PREPEND="${DXMT_ROOT}${WINEDLLPATH_PREPEND:+:${WINEDLLPATH_PR
 export DXMT_LOG_LEVEL="${DXMT_LOG_LEVEL:-error}"
 export WINEDLLOVERRIDES="dxgi,d3d11,d3d10core=n,b;bcrypt=b;ncrypt=b;gameoverlayrenderer,gameoverlayrenderer64=d"
 
+# --- Performance tuning ------------------------------------------------------
+# MetalFX spatial upscaling: the game renders at a lower internal resolution and
+# the GPU upscales it. Big FPS win on heavy (e.g. Unreal Engine) titles. Falls
+# back gracefully if the GPU can't do it. Turn off with DXMT_METALFX=0.
+export DXMT_METALFX_SPATIAL_SWAPCHAIN="${DXMT_METALFX:-1}"
+
+# DXMT config, passed inline so it follows the game process (no files dropped in
+# game folders). Tunables:
+#   DXMT_UPSCALE_FACTOR : MetalFX scale, 1.0 = native ... 2.0 = max boost (def 1.5)
+#   DXMT_MAX_FPS        : frame cap, unset = uncapped
+_dxmt_cfg="d3d11.metalSpatialUpscaleFactor = ${DXMT_UPSCALE_FACTOR:-1.5}"
+[[ -n "${DXMT_MAX_FPS:-}" ]] && _dxmt_cfg="${_dxmt_cfg};d3d11.preferredMaxFrameRate = ${DXMT_MAX_FPS}"
+export DXMT_CONFIG="${DXMT_CONFIG:-$_dxmt_cfg}"
+
+# Metal performance HUD (FPS + frame time overlay). Set DXMT_HUD=1 to measure.
+export MTL_HUD_ENABLED="${DXMT_HUD:-0}"
+
 STEAM_ARGS=(
     -no-cef-sandbox
     -cef-single-process
@@ -85,6 +102,7 @@ fi
 log_step "Launching Steam"
 log_info "Prefix          : $WINEPREFIX"
 log_info "Virtual desktop : ${WINE_VIRTUAL_DESKTOP_NAME} @ ${WINE_VIRTUAL_DESKTOP}"
+log_info "MetalFX upscale : ${DXMT_METALFX_SPATIAL_SWAPCHAIN} (factor ${DXMT_UPSCALE_FACTOR:-1.5}${DXMT_MAX_FPS:+, cap ${DXMT_MAX_FPS}fps})"
 log_info "Log             : $LOG_FILE"
 
 cd "$WINEPREFIX/drive_c/Program Files (x86)/Steam"
